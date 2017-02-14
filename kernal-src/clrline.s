@@ -1,35 +1,35 @@
 clrscr:
-    ldy $E6
+    ldy CURR_LEFT_MARGIN      ; leftmost column of current line
     jsr unlink
     jsr setaddr
-    bit $D7
+    bit ACTIVE_SCREEN         ; bit 7 high ? 80 col : 40 col
     bmi clrscr_80
     dey
 clrscr_40:
     iny
     lda #$20
-    sta ($E0),Y
+    sta (LINE_PTR_LOW),Y      ; memory ptr to first column in current line
     lda $F1
-    sta ($E2),Y
-    cpy $E7
+    sta (ATTR_PTR_LOW),Y      ; memory ptr to first attribute col in current line
+    cpy CURR_RIGHT_MARGIN
     bne clrscr_40
     rts
 clrscr_80:
-    stx $0A31
-    sty $0A32
-    ldx #$18
+    stx CURR_ROW_NUMBER
+    sty CURR_COL_NUMBER
+    ldx #$18                  ; Smooth scroll/block copy register
     jsr readreg
-    and #$7F
+    and #$7F                  ; Turn off block copy
     jsr writereg
     ldx #$12
     clc
     tya
-    adc $E0
+    adc LINE_PTR_LOW
     pha
-    sta $0A3C
+    sta VDC_WORK_PTR_LOW
     lda #$00
     adc $E1
-    sta $0A3D
+    sta VDC_WORK_PTR_HIGH
     jsr writereg
     inx
     pla
@@ -37,24 +37,24 @@ clrscr_80:
     lda #$20
     jsr write80
     sec
-    lda $E7
-    sbc $0A32
+    lda CURR_RIGHT_MARGIN
+    sbc CURR_COL_NUMBER
     pha
     beq LC50B
     tax
     sec
-    adc $0A3C
-    sta $0A3C
+    adc VDC_WORK_PTR_LOW
+    sta VDC_WORK_PTR_LOW
     lda #$00
-    adc $0A3D
-    sta $0A3D
+    adc VDC_WORK_PTR_HIGH
+    sta VDC_WORK_PTR_HIGH
     txa
     jsr LC53E
 LC50B:
     ldx #$12
     clc
     tya
-    adc $E2
+    adc ATTR_PTR_LOW
     pha
     lda #$00
     adc $E3
@@ -62,10 +62,10 @@ LC50B:
     inx
     pla
     jsr writereg
-    lda $0A3D
+    lda VDC_WORK_PTR_HIGH
     and #$07
-    ora $0A2F
-    sta $0A3D
+    ora VDC_ATTRIBUTE_START_PAGE
+    sta VDC_WORK_PTR_HIGH
     lda $F1
     and #$8F
     jsr write80
@@ -73,6 +73,6 @@ LC50B:
     beq LC536
     jsr LC53E
 LC536:
-    ldx $0A31
-    ldy $E7
+    ldx CURR_ROW_NUMBER
+    ldy CURR_RIGHT_MARGIN
     rts
